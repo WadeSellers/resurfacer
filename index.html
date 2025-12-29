@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1e293b">
+  <title>Resurfacer</title>
+  <link rel="manifest" href="/manifest.json">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #0f172a;
+      color: white;
+    }
+    .app { min-height: 100vh; padding-bottom: 60px; }
+    .header { background: #1e293b; padding: 16px; border-bottom: 1px solid #334155; }
+    .header h1 { font-size: 24px; font-weight: bold; }
+    .header p { color: #94a3b8; font-size: 14px; margin-top: 4px; }
+    .tabs { display: flex; background: #1e293b; border-bottom: 1px solid #334155; }
+    .tab { flex: 1; padding: 12px; text-align: center; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 14px; border-bottom: 2px solid transparent; }
+    .tab.active { color: #60a5fa; border-bottom-color: #60a5fa; }
+    .content { padding: 16px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; }
+    .form-group input, .form-group textarea { 
+      width: 100%; 
+      padding: 8px 16px; 
+      background: #1e293b; 
+      border: 1px solid #334155; 
+      border-radius: 8px; 
+      color: white; 
+      font-family: inherit;
+    }
+    .form-group input:focus, .form-group textarea:focus { 
+      outline: none; 
+      border-color: #3b82f6; 
+    }
+    .form-group textarea { resize: none; }
+    .category-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .category-btn { 
+      padding: 12px; 
+      background: #1e293b; 
+      border: 2px solid #334155; 
+      border-radius: 8px; 
+      color: white; 
+      cursor: pointer; 
+      text-align: left;
+      font-size: 14px;
+    }
+    .category-btn.active { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+    .btn-primary { 
+      width: 100%; 
+      padding: 12px; 
+      background: #2563eb; 
+      border: none; 
+      border-radius: 8px; 
+      color: white; 
+      font-weight: 500; 
+      cursor: pointer;
+    }
+    .btn-primary:disabled { background: #334155; color: #64748b; cursor: not-allowed; }
+    .context-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+    .context-btn { 
+      padding: 16px; 
+      background: #1e293b; 
+      border: 2px solid #334155; 
+      border-radius: 8px; 
+      color: white; 
+      cursor: pointer;
+      font-weight: 500;
+    }
+    .context-btn.active { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+    .item-card { 
+      background: #1e293b; 
+      border: 1px solid #334155; 
+      border-radius: 8px; 
+      padding: 16px; 
+      margin-bottom: 12px; 
+    }
+    .item-header { display: flex; gap: 12px; margin-bottom: 12px; }
+    .item-thumb { 
+      width: 96px; 
+      height: 96px; 
+      flex-shrink: 0; 
+      border-radius: 4px; 
+      object-fit: cover;
+      background: #334155;
+    }
+    .item-thumb.ig { 
+      background: linear-gradient(135deg, #a855f7, #ec4899, #f97316); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      font-size: 32px;
+    }
+    .item-content { flex: 1; min-width: 0; }
+    .item-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; font-size: 12px; color: #94a3b8; }
+    .item-meta span { color: #64748b; }
+    .acted-badge { background: rgba(34, 197, 94, 0.2); color: #4ade80; padding: 2px 8px; border-radius: 4px; }
+    .item-note { font-size: 14px; margin-bottom: 8px; }
+    .item-link { color: #60a5fa; font-size: 14px; text-decoration: none; }
+    .item-actions { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid #334155; }
+    .item-actions button { 
+      flex: 1; 
+      padding: 8px; 
+      border: none; 
+      border-radius: 4px; 
+      cursor: pointer; 
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .btn-acted { background: rgba(22, 163, 74, 0.2); color: #4ade80; }
+    .btn-acted.active { background: rgba(22, 163, 74, 0.3); color: #86efac; }
+    .btn-archive { background: #334155; color: #cbd5e1; }
+    .btn-delete { background: rgba(220, 38, 38, 0.2); color: #f87171; padding: 8px 12px; flex: 0; }
+    .empty { text-align: center; padding: 48px 0; color: #64748b; }
+    .footer { 
+      position: fixed; 
+      bottom: 0; 
+      left: 0; 
+      right: 0; 
+      background: #1e293b; 
+      border-top: 1px solid #334155; 
+      padding: 12px; 
+      text-align: center; 
+      font-size: 14px; 
+      color: #94a3b8;
+    }
+    .subtitle { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  
+  <script>
+    const CATEGORIES = [
+      { id: 'workouts', label: '🏋️ Workouts', context: 'gym' },
+      { id: 'recipes', label: '🍳 Recipes', context: 'meal-planning' },
+      { id: 'video-concepts', label: '🎥 Video Concepts', context: 'creating' },
+      { id: 'style-inspiration', label: '🎬 Style Inspiration', context: 'creating' },
+      { id: 'creative-techniques', label: '✨ Creative Techniques', context: 'creating' },
+      { id: 'personal-dev', label: '💡 Personal Development', context: 'reflection' },
+      { id: 'other', label: '📌 Other', context: 'general' }
+    ];
+
+    const CONTEXTS = [
+      { id: 'gym', label: '🏋️ At the Gym' },
+      { id: 'meal-planning', label: '🍳 Meal Planning' },
+      { id: 'creating', label: '🎥 Creating Content' },
+      { id: 'reflection', label: '💡 Personal Time' },
+      { id: 'browse', label: '👀 Just Browsing' }
+    ];
+
+    class App {
+      constructor() {
+        this.view = 'add';
+        this.items = [];
+        this.newItem = { url: '', note: '', category: 'workouts' };
+        this.selectedContext = 'browse';
+        this.filterCategory = 'all';
+        this.searchTerm = '';
+        this.loadData();
+        this.render();
+      }
+
+      loadData() {
+        const data = localStorage.getItem('resurfacer-items');
+        if (data) this.items = JSON.parse(data);
+      }
+
+      saveData() {
+        localStorage.setItem('resurfacer-items', JSON.stringify(this.items));
+      }
+
+      addItem() {
+        if (!this.newItem.url.trim()) return;
+        this.items.unshift({
+          id: Date.now().toString(),
+          url: this.newItem.url.trim(),
+          note: this.newItem.note.trim(),
+          category: this.newItem.category,
+          createdAt: new Date().toISOString(),
+          archived: false,
+          actedOn: false,
+          timesShown: 0
+        });
+        this.newItem = { url: '', note: '', category: this.newItem.category };
+        this.saveData();
+        this.render();
+      }
+
+      toggleActedOn(id) {
+        const item = this.items.find(i => i.id === id);
+        if (item) item.actedOn = !item.actedOn;
+        this.saveData();
+        this.render();
+      }
+
+      toggleArchive(id) {
+        const item = this.items.find(i => i.id === id);
+        if (item) item.archived = !item.archived;
+        this.saveData();
+        this.render();
+      }
+
+      deleteItem(id) {
+        this.items = this.items.filter(i => i.id !== id);
+        this.saveData();
+        this.render();
+      }
+
+      getContextItems() {
+        const active = this.items.filter(i => !i.archived);
+        if (this.selectedContext === 'browse') return active;
+        const cats = CATEGORIES.filter(c => c.context === this.selectedContext).map(c => c.id);
+        return active.filter(i => cats.includes(i.category));
+      }
+
+      getBrowseItems() {
+        let items = this.items.filter(i => !i.archived);
+        if (this.filterCategory !== 'all') items = items.filter(i => i.category === this.filterCategory);
+        if (this.searchTerm) {
+          const term = this.searchTerm.toLowerCase();
+          items = items.filter(i => i.note.toLowerCase().includes(term) || i.url.toLowerCase().includes(term));
+        }
+        return items;
+      }
+
+      getArchivedItems() {
+        let items = this.items.filter(i => i.archived);
+        if (this.searchTerm) {
+          const term = this.searchTerm.toLowerCase();
+          items = items.filter(i => i.note.toLowerCase().includes(term) || i.url.toLowerCase().includes(term));
+        }
+        return items;
+      }
+
+      getThumbnail(url) {
+        if (url.includes('instagram.com') || url.includes('instagr.am')) return { type: 'ig' };
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+          let videoId = null;
+          if (url.includes('youtu.be/')) {
+            const parts = url.split('youtu.be/')[1];
+            if (parts) videoId = parts.split('?')[0].split('&')[0];
+          } else {
+            try {
+              const urlObj = new URL(url);
+              videoId = urlObj.searchParams.get('v');
+            } catch (e) {}
+          }
+          if (videoId) return { type: 'yt', id: videoId };
+        }
+        return null;
+      }
+
+      getPlatform(url) {
+        if (url.includes('instagram.com') || url.includes('instagr.am')) return 'Instagram';
+        if (url.includes('youtube.com') || url.includes('youtu.be')) return 'YouTube';
+        return 'Link';
+      }
+
+      render() {
+        const el = document.getElementById('app');
+        el.innerHTML = `
+          <div class="app">
+            <div class="header">
+              <h1>Resurfacer</h1>
+              <p>Save content. Use it later.</p>
+            </div>
+            <div class="tabs">
+              <button class="tab ${this.view === 'add' ? 'active' : ''}" onclick="app.view='add'; app.render()">+ Add New</button>
+              <button class="tab ${this.view === 'check-in' ? 'active' : ''}" onclick="app.view='check-in'; app.render()">Check-In</button>
+              <button class="tab ${this.view === 'browse' ? 'active' : ''}" onclick="app.view='browse'; app.render()">Browse</button>
+              <button class="tab ${this.view === 'archive' ? 'active' : ''}" onclick="app.view='archive'; app.render()">Archive</button>
+            </div>
+            <div class="content">
+              ${this.renderView()}
+            </div>
+            <div class="footer">
+              ${this.items.filter(i => !i.archived).length} active • 
+              ${this.items.filter(i => i.actedOn && !i.archived).length} acted on • 
+              ${this.items.filter(i => i.archived).length} archived
+            </div>
+          </div>
+        `;
+        this.attachEventListeners();
+      }
+
+      renderView() {
+        if (this.view === 'add') return this.renderAdd();
+        if (this.view === 'check-in') return this.renderCheckIn();
+        if (this.view === 'browse') return this.renderBrowse();
+        if (this.view === 'archive') return this.renderArchive();
+      }
+
+      renderAdd() {
+        return `
+          <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">Save New Content</h2>
+          <div class="form-group">
+            <label>Link (Instagram, YouTube, etc.)</label>
+            <input type="url" id="url-input" placeholder="Paste link here..." value="${this.newItem.url}">
+          </div>
+          <div class="form-group">
+            <label>Why are you saving this?</label>
+            <textarea id="note-input" rows="3" placeholder="Quick note about what this is or why you want it...">${this.newItem.note}</textarea>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <div class="category-grid">
+              ${CATEGORIES.map(cat => `
+                <button class="category-btn ${this.newItem.category === cat.id ? 'active' : ''}" onclick="app.newItem.category='${cat.id}'; app.render()">
+                  ${cat.label}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+          <button class="btn-primary" onclick="app.addItem()" ${!this.newItem.url.trim() ? 'disabled' : ''}>Save Item</button>
+        `;
+      }
+
+      renderCheckIn() {
+        const items = this.getContextItems();
+        return `
+          <h2 style="font-size: 18px; font-weight: 600; margin-bottom: 16px;">What are you doing right now?</h2>
+          <div class="context-grid">
+            ${CONTEXTS.map(ctx => `
+              <button class="context-btn ${this.selectedContext === ctx.id ? 'active' : ''}" onclick="app.selectedContext='${ctx.id}'; app.render()">
+                ${ctx.label}
+              </button>
+            `).join('')}
+          </div>
+          <div class="subtitle">
+            ${items.length > 0 ? `${items.length} saved item${items.length !== 1 ? 's' : ''} for this context` : 'No saved items for this context yet'}
+          </div>
+          ${items.length > 0 ? items.slice(0, 3).map(item => this.renderItem(item)).join('') : '<div class="empty"><p>Nothing saved for this context yet.</p><p style="font-size: 14px; margin-top: 8px;">Try a different context or add something new!</p></div>'}
+        `;
+      }
+
+      renderBrowse() {
+        const items = this.getBrowseItems();
+        return `
+          <div style="margin-bottom: 16px;">
+            <input type="text" id="search-input" placeholder="Search your saved items..." value="${this.searchTerm}" style="width: 100%; padding: 8px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white; margin-bottom: 12px;">
+            <div style="display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;">
+              <button onclick="app.filterCategory='all'; app.render()" style="padding: 4px 12px; border-radius: 16px; border: none; font-size: 14px; white-space: nowrap; cursor: pointer; background: ${this.filterCategory === 'all' ? '#3b82f6' : '#1e293b'}; color: ${this.filterCategory === 'all' ? 'white' : '#94a3b8'};">All</button>
+              ${CATEGORIES.map(cat => `
+                <button onclick="app.filterCategory='${cat.id}'; app.render()" style="padding: 4px 12px; border-radius: 16px; border: none; font-size: 14px; white-space: nowrap; cursor: pointer; background: ${this.filterCategory === cat.id ? '#3b82f6' : '#1e293b'}; color: ${this.filterCategory === cat.id ? 'white' : '#94a3b8'};">${cat.label}</button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="subtitle">${items.length} active item${items.length !== 1 ? 's' : ''}</div>
+          ${items.length > 0 ? items.map(item => this.renderItem(item)).join('') : '<div class="empty"><p>No active items found.</p></div>'}
+        `;
+      }
+
+      renderArchive() {
+        const items = this.getArchivedItems();
+        return `
+          <div style="margin-bottom: 16px;">
+            <input type="text" id="search-input" placeholder="Search archived items..." value="${this.searchTerm}" style="width: 100%; padding: 8px 16px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: white;">
+          </div>
+          <div class="subtitle">${items.length} archived item${items.length !== 1 ? 's' : ''}</div>
+          ${items.length > 0 ? items.map(item => this.renderItem(item, true)).join('') : '<div class="empty"><p>No archived items.</p><p style="font-size: 14px; margin-top: 8px;">Items you archive will appear here.</p></div>'}
+        `;
+      }
+
+      renderItem(item, isArchived = false) {
+        const cat = CATEGORIES.find(c => c.id === item.category);
+        const thumb = this.getThumbnail(item.url);
+        let thumbHtml = '';
+        if (thumb?.type === 'ig') {
+          thumbHtml = '<div class="item-thumb ig">📸</div>';
+        } else if (thumb?.type === 'yt') {
+          thumbHtml = `<img src="https://i.ytimg.com/vi/${thumb.id}/hqdefault.jpg" class="item-thumb" onerror="this.style.display='none'">`;
+        }
+        
+        return `
+          <div class="item-card">
+            <div class="item-header">
+              ${thumbHtml}
+              <div class="item-content">
+                <div class="item-meta">
+                  ${this.getPlatform(item.url)} <span>•</span> ${cat?.label}
+                  ${item.actedOn ? '<span class="acted-badge">✓ Acted on</span>' : ''}
+                </div>
+                ${item.note ? `<div class="item-note">${item.note}</div>` : ''}
+                <a href="${item.url}" target="_blank" class="item-link">Open content →</a>
+              </div>
+            </div>
+            <div class="item-actions">
+              <button class="btn-acted ${item.actedOn ? 'active' : ''}" onclick="app.toggleActedOn('${item.id}')">
+                ✓ ${item.actedOn ? 'Acted On' : 'Mark Acted On'}
+              </button>
+              <button class="btn-archive" onclick="app.toggleArchive('${item.id}')">
+                ${isArchived ? '↩ Unarchive' : '📦 Archive'}
+              </button>
+              <button class="btn-delete" onclick="app.deleteItem('${item.id}')">🗑</button>
+            </div>
+          </div>
+        `;
+      }
+
+      attachEventListeners() {
+        const urlInput = document.getElementById('url-input');
+        const noteInput = document.getElementById('note-input');
+        const searchInput = document.getElementById('search-input');
+        
+        if (urlInput) {
+          urlInput.oninput = (e) => {
+            this.newItem.url = e.target.value;
+            this.render();
+          };
+        }
+        if (noteInput) {
+          noteInput.oninput = (e) => {
+            this.newItem.note = e.target.value;
+          };
+        }
+        if (searchInput) {
+          searchInput.oninput = (e) => {
+            this.searchTerm = e.target.value;
+            this.render();
+          };
+        }
+      }
+    }
+
+    const app = new App();
+  </script>
+</body>
+</html>
