@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#1e293b">
   <title>Resurfacer</title>
   <link rel="manifest" href="/manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -130,12 +131,28 @@
       color: #94a3b8;
     }
     .subtitle { font-size: 14px; color: #94a3b8; margin-bottom: 12px; }
+    .loading { 
+      position: fixed; 
+      top: 50%; 
+      left: 50%; 
+      transform: translate(-50%, -50%); 
+      text-align: center;
+    }
   </style>
 </head>
 <body>
-  <div id="app"></div>
+  <div id="app">
+    <div class="loading">
+      <h2>Loading...</h2>
+    </div>
+  </div>
   
   <script>
+    const SUPABASE_URL = 'https://zumcckljvrizcierqbmp.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1bWNja2xqdnJpemNpZXJxYm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzU1MDc1MTIsImV4cCI6MjA1MTA4MzUxMn0.sb_publishable_Pj-9O6XbjDqDygS2vFcTdw_ez_wmnIQ';
+    
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
     const CATEGORIES = [
       { id: 'workouts', label: '🏋️ Workouts', context: 'gym' },
       { id: 'recipes', label: '🍳 Recipes', context: 'meal-planning' },
@@ -162,54 +179,112 @@
         this.selectedContext = 'browse';
         this.filterCategory = 'all';
         this.searchTerm = '';
-        this.loadData();
+        this.init();
+      }
+
+      async init() {
+        await this.loadData();
         this.render();
       }
 
-      loadData() {
-        const data = localStorage.getItem('resurfacer-items');
-        if (data) this.items = JSON.parse(data);
+      async loadData() {
+        try {
+          const { data, error } = await supabase
+            .from('items')
+            .select('*')
+            .order('created_at', { ascending: false });
+          
+          if (error) throw error;
+          this.items = data || [];
+        } catch (error) {
+          console.error('Error loading data:', error);
+          this.items = [];
+        }
       }
 
-      saveData() {
-        localStorage.setItem('resurfacer-items', JSON.stringify(this.items));
-      }
-
-      addItem() {
+      async addItem() {
         if (!this.newItem.url.trim()) return;
-        this.items.unshift({
-          id: Date.now().toString(),
-          url: this.newItem.url.trim(),
-          note: this.newItem.note.trim(),
-          category: this.newItem.category,
-          createdAt: new Date().toISOString(),
-          archived: false,
-          actedOn: false,
-          timesShown: 0
-        });
-        this.newItem = { url: '', note: '', category: this.newItem.category };
-        this.saveData();
-        this.render();
+        
+        try {
+          const { data, error } = await supabase
+            .from('items')
+            .insert([
+              {
+                url: this.newItem.url.trim(),
+                note: this.newItem.note.trim(),
+                category: this.newItem.category,
+                archived: false,
+                acted_on: false,
+                times_shown: 0
+              }
+            ])
+            .select();
+          
+          if (error) throw error;
+          
+          this.items.unshift(data[0]);
+          this.newItem = { url: '', note: '', category: this.newItem.category };
+          this.render();
+        } catch (error) {
+          console.error('Error adding item:', error);
+          alert('Error saving item. Please try again.');
+        }
       }
 
-      toggleActedOn(id) {
+      async toggleActedOn(id) {
         const item = this.items.find(i => i.id === id);
-        if (item) item.actedOn = !item.actedOn;
-        this.saveData();
-        this.render();
+        if (!item) return;
+        
+        try {
+          const { error } = await supabase
+            .from('items')
+            .update({ acted_on: !item.acted_on })
+            .eq('id', id);
+          
+          if (error) throw error;
+          
+          item.acted_on = !item.acted_on;
+          this.render();
+        } catch (error) {
+          console.error('Error updating item:', error);
+        }
       }
 
-      toggleArchive(id) {
+      async toggleArchive(id) {
         const item = this.items.find(i => i.id === id);
-        if (item) item.archived = !item.archived;
-        this.saveData();
-        this.render();
+        if (!item) return;
+        
+        try {
+          const { error } = await supabase
+            .from('items')
+            .update({ archived: !item.archived })
+            .eq('id', id);
+          
+          if (error) throw error;
+          
+          item.archived = !item.archived;
+          this.render();
+        } catch (error) {
+          console.error('Error updating item:', error);
+        }
       }
 
-      deleteItem(id) {
-        this.items = this.items.filter(i => i.id !== id);
-        this.saveData();
-        this.render();
+      async deleteItem(id) {
+        if (!confirm('Are you sure you want to delete this item?')) return;
+        
+        try {
+          const { error } = await supabase
+            .from('items')
+            .delete()
+            .eq('id', id);
+          
+          if (error) throw error;
+          
+          this.items = this.items.filter(i => i.id !== id);
+          this.render();
+        } catch (error) {
+          console.error('Error deleting item:', error);
+        }
       }
 
       getContextItems() {
@@ -224,7 +299,10 @@
         if (this.filterCategory !== 'all') items = items.filter(i => i.category === this.filterCategory);
         if (this.searchTerm) {
           const term = this.searchTerm.toLowerCase();
-          items = items.filter(i => i.note.toLowerCase().includes(term) || i.url.toLowerCase().includes(term));
+          items = items.filter(i => 
+            (i.note && i.note.toLowerCase().includes(term)) || 
+            i.url.toLowerCase().includes(term)
+          );
         }
         return items;
       }
@@ -233,7 +311,10 @@
         let items = this.items.filter(i => i.archived);
         if (this.searchTerm) {
           const term = this.searchTerm.toLowerCase();
-          items = items.filter(i => i.note.toLowerCase().includes(term) || i.url.toLowerCase().includes(term));
+          items = items.filter(i => 
+            (i.note && i.note.toLowerCase().includes(term)) || 
+            i.url.toLowerCase().includes(term)
+          );
         }
         return items;
       }
@@ -281,7 +362,7 @@
             </div>
             <div class="footer">
               ${this.items.filter(i => !i.archived).length} active • 
-              ${this.items.filter(i => i.actedOn && !i.archived).length} acted on • 
+              ${this.items.filter(i => i.acted_on && !i.archived).length} acted on • 
               ${this.items.filter(i => i.archived).length} archived
             </div>
           </div>
@@ -384,15 +465,15 @@
               <div class="item-content">
                 <div class="item-meta">
                   ${this.getPlatform(item.url)} <span>•</span> ${cat?.label}
-                  ${item.actedOn ? '<span class="acted-badge">✓ Acted on</span>' : ''}
+                  ${item.acted_on ? '<span class="acted-badge">✓ Acted on</span>' : ''}
                 </div>
                 ${item.note ? `<div class="item-note">${item.note}</div>` : ''}
                 <a href="${item.url}" target="_blank" class="item-link">Open content →</a>
               </div>
             </div>
             <div class="item-actions">
-              <button class="btn-acted ${item.actedOn ? 'active' : ''}" onclick="app.toggleActedOn('${item.id}')">
-                ✓ ${item.actedOn ? 'Acted On' : 'Mark Acted On'}
+              <button class="btn-acted ${item.acted_on ? 'active' : ''}" onclick="app.toggleActedOn('${item.id}')">
+                ✓ ${item.acted_on ? 'Acted On' : 'Mark Acted On'}
               </button>
               <button class="btn-archive" onclick="app.toggleArchive('${item.id}')">
                 ${isArchived ? '↩ Unarchive' : '📦 Archive'}
