@@ -151,7 +151,8 @@
     const SUPABASE_URL = 'https://zumcckljvrizcierqbmp.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp1bWNja2xqdnJpemNpZXJxYm1wIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5OTQ3NDQsImV4cCI6MjA4MjU3MDc0NH0.fAHSsbzbYQvo4RbJUIQENCWH-sC-XBJzpgbZxIuTNC0';
     
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
 
     const CATEGORIES = [
       { id: 'workouts', label: '🏋️ Workouts', context: 'gym' },
@@ -189,7 +190,7 @@
 
       async loadData() {
         try {
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from('items')
             .select('*')
             .order('created_at', { ascending: false });
@@ -206,7 +207,7 @@
         if (!this.newItem.url.trim()) return;
         
         try {
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from('items')
             .insert([
               {
@@ -236,7 +237,7 @@
         if (!item) return;
         
         try {
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('items')
             .update({ acted_on: !item.acted_on })
             .eq('id', id);
@@ -255,7 +256,7 @@
         if (!item) return;
         
         try {
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('items')
             .update({ archived: !item.archived })
             .eq('id', id);
@@ -273,7 +274,7 @@
         if (!confirm('Are you sure you want to delete this item?')) return;
         
         try {
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('items')
             .delete()
             .eq('id', id);
