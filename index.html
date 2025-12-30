@@ -376,6 +376,44 @@
         this.render();
       }
 
+      startAddingCategory() {
+        const name = prompt('Category name:');
+        if (!name || !name.trim()) return;
+        
+        const emoji = prompt('Emoji (optional, e.g. 🎮):') || '📁';
+        
+        this.addCategory(name.trim(), emoji.trim());
+      }
+
+      async addCategory(label, emoji) {
+        if (this.categories.length >= 4) {
+          alert('Free plan allows 4 categories max. Upgrade to unlock 8 more!');
+          return;
+        }
+        
+        try {
+          const { data, error } = await supabaseClient
+            .from('categories')
+            .insert([
+              {
+                label: label,
+                emoji: emoji,
+                order_index: this.categories.length
+              }
+            ])
+            .select();
+          
+          if (error) throw error;
+          
+          this.categories.push(data[0]);
+          this.newItem.category = data[0].id;
+          this.render();
+        } catch (error) {
+          console.error('Error adding category:', error);
+          alert('Error adding category. Please try again.');
+        }
+      }
+
       async addItem() {
         if (!this.newItem.url.trim()) return;
         
@@ -623,7 +661,7 @@
                 `;
               }).join('')}
               ${this.categories.length < 4 ? `
-                <button class="category-btn" style="border-style: dashed; opacity: 0.6;" onclick="alert('Add new category - coming soon!')">
+                <button class="category-btn" style="border-style: dashed; opacity: 0.6;" onclick="app.startAddingCategory()">
                   + Add New
                 </button>
               ` : ''}
