@@ -138,7 +138,7 @@
       transform: translate(-50%, -50%); 
       text-align: center;
     }
-//* Animations - JAZZED UP */
+/* Animations - JAZZED UP */
 @keyframes fadeInUp {
       from {
         opacity: 0;
@@ -263,18 +263,24 @@
     ];
 
     class App {
-      constructor() {
+        constructor() {
         this.view = 'add';
         this.items = [];
-        this.newItem = { url: '', note: '', category: 'workouts' };
+        this.categories = [];
+        this.newItem = { url: '', note: '', category: '' };
         this.selectedContext = 'browse';
         this.filterCategory = 'all';
         this.searchTerm = '';
+        this.editingCategoryId = null;
         this.init();
       }
 
       async init() {
+        await this.loadCategories();
         await this.loadData();
+        if (this.categories.length > 0) {
+          this.newItem.category = this.categories[0].id;
+        }
         this.render();
       }
 
@@ -291,6 +297,82 @@
           console.error('Error loading data:', error);
           this.items = [];
         }
+      }
+
+      async loadCategories() {
+        try {
+          const { data, error } = await supabaseClient
+            .from('categories')
+            .select('*')
+            .order('order_index', { ascending: true });
+          
+          if (error) throw error;
+          
+          // If no categories exist, create defaults
+          if (!data || data.length === 0) {
+            await this.createDefaultCategories();
+            return;
+          }
+          
+          this.categories = data;
+        } catch (error) {
+          console.error('Error loading categories:', error);
+          this.categories = [];
+        }
+      }
+
+      async createDefaultCategories() {
+        const defaults = [
+          { label: 'Workouts', emoji: '🏋️', order_index: 0 },
+          { label: 'Recipes', emoji: '🍳', order_index: 1 },
+          { label: 'Video Concepts', emoji: '🎥', order_index: 2 }
+        ];
+        
+        try {
+          const { data, error } = await supabaseClient
+            .from('categories')
+            .insert(defaults)
+            .select();
+          
+          if (error) throw error;
+          this.categories = data;
+        } catch (error) {
+          console.error('Error creating default categories:', error);
+        }
+      }
+
+      async renameCategory(id, newLabel) {
+        try {
+          const { error } = await supabaseClient
+            .from('categories')
+            .update({ label: newLabel })
+            .eq('id', id);
+          
+          if (error) throw error;
+          
+          const category = this.categories.find(c => c.id === id);
+          if (category) category.label = newLabel;
+          this.render();
+        } catch (error) {
+          console.error('Error renaming category:', error);
+        }
+      }
+
+      startEditingCategory(id) {
+        this.editingCategoryId = id;
+        this.render();
+        setTimeout(() => {
+          const input = document.getElementById(`cat-input-${id}`);
+          if (input) {
+            input.focus();
+            input.select();
+          }
+        }, 50);
+      }
+
+      cancelEditingCategory() {
+        this.editingCategoryId = null;
+        this.render();
       }
 
       async addItem() {
@@ -515,11 +597,35 @@
           <div class="form-group">
             <label>Category</label>
             <div class="category-grid">
-              ${CATEGORIES.map(cat => `
-                <button class="category-btn ${this.newItem.category === cat.id ? 'active' : ''}" onclick="app.newItem.category='${cat.id}'; app.render()">
-                  ${cat.label}
+              ${this.categories.map(cat => {
+                const isEditing = this.editingCategoryId === cat.id;
+                return `
+                  <button 
+                    type="button"
+                    class="category-btn ${this.newItem.category === cat.id ? 'active' : ''}" 
+                    ${isEditing ? '' : `onclick="app.newItem.category='${cat.id}'; app.render()"`}
+                    ondblclick="app.startEditingCategory('${cat.id}')"
+                    ${isEditing ? 'style="padding: 8px;"' : ''}
+                  >
+                    ${isEditing ? `
+                      <input 
+                        type="text" 
+                        id="cat-input-${cat.id}"
+                        value="${cat.label}"
+                        onblur="app.renameCategory('${cat.id}', this.value); app.cancelEditingCategory()"
+                        onkeydown="if(event.key==='Enter'){app.renameCategory('${cat.id}', this.value); app.cancelEditingCategory()} else if(event.key==='Escape'){app.cancelEditingCategory()}"
+                        style="width: 100%; background: transparent; border: none; color: white; font-size: 14px; font-weight: 500; outline: none;"
+                        onclick="event.stopPropagation()"
+                      >
+                    ` : `${cat.emoji} ${cat.label}`}
+                  </button>
+                `;
+              }).join('')}
+              ${this.categories.length < 4 ? `
+                <button class="category-btn" style="border-style: dashed; opacity: 0.6;" onclick="alert('Add new category - coming soon!')">
+                  + Add New
                 </button>
-              `).join('')}
+              ` : ''}
             </div>
           </div>
           <button class="btn-primary" onclick="app.addItem()" ${!this.newItem.url.trim() ? 'disabled' : ''}>Save Item</button>
